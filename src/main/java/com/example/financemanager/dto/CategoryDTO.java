@@ -7,6 +7,7 @@ public class CategoryDTO {
     private String name;
     private UUID parentId;
     private Integer allowedNestingDepth;
+    private String type;
     private List<CategoryDTO> subCategories;
 
     // Getters and Setters
@@ -40,5 +41,13 @@ public class CategoryDTO {
 
     public void setSubCategories(List<CategoryDTO> subCategories) {
         this.subCategories = subCategories;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 }

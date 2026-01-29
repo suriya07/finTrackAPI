@@ -10,8 +10,11 @@ import com.example.financemanager.service.CustomUserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/budgets")
@@ -29,8 +32,20 @@ public class BudgetController {
     }
 
     @GetMapping
-    public List<BudgetEntity> getBudgets(@AuthenticationPrincipal CustomUserDetails user) {
-        return budgetRepository.findByUserId(user.getUserId());
+    public List<BudgetEntity> getBudgets(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer year) {
+
+        List<BudgetEntity> allBudgets = budgetRepository.findByUserId(user.getUserId());
+
+        if (month != null && year != null) {
+            return allBudgets.stream()
+                    .filter(b -> b.getMonth().getMonthValue() == month && b.getMonth().getYear() == year)
+                    .collect(Collectors.toList());
+        }
+
+        return allBudgets;
     }
 
     @PostMapping

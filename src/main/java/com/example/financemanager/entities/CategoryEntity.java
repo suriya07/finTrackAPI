@@ -18,6 +18,9 @@ public class CategoryEntity extends BaseAuditableEntity {
 
     private String name;
 
+    @Column(name = "type", nullable = false)
+    private String type;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     @com.fasterxml.jackson.annotation.JsonIgnore
@@ -81,5 +84,13 @@ public class CategoryEntity extends BaseAuditableEntity {
 
     public void setAllowedNestingDepth(Integer allowedNestingDepth) {
         this.allowedNestingDepth = allowedNestingDepth;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
     }
 }

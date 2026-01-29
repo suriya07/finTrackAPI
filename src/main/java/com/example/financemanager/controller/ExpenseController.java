@@ -8,6 +8,8 @@ import com.example.financemanager.service.CustomUserDetails;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.List;
 
 @RestController
@@ -29,7 +31,18 @@ public class ExpenseController {
 
     @GetMapping
     public List<ExpenseEntity> getExpenses(
-            @AuthenticationPrincipal CustomUserDetails user) {
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(required = false) Integer month,
+            @RequestParam(required = false) Integer year) {
+
+        if (month != null && year != null) {
+            YearMonth yearMonth = YearMonth.of(year, month);
+            LocalDate start = yearMonth.atDay(1);
+            LocalDate end = yearMonth.atEndOfMonth();
+            return expenseRepository.findByUserIdAndExpenseDateBetweenOrderByExpenseDateDesc(user.getUserId(), start,
+                    end);
+        }
+
         return expenseRepository.findByUserId(user.getUserId());
     }
 
