@@ -14,7 +14,10 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.UUID;
 
@@ -36,7 +39,20 @@ public class DebtController {
     }
 
     @GetMapping
-    public List<DebtEntity> getDebts(@AuthenticationPrincipal CustomUserDetails user) {
+    public List<DebtEntity> getDebts(
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam(required = false) Integer toMonth,
+            @RequestParam(required = false) Integer toYear) {
+
+        if (toMonth != null && toYear != null) {
+            // End of the specified month
+            LocalDateTime endOfMonth = LocalDateTime.of(toYear, toMonth, 1, 0, 0)
+                    .plusMonths(1)
+                    .minusNanos(1);
+            Instant limit = endOfMonth.atZone(ZoneId.systemDefault()).toInstant();
+            return debtRepository.findByUserIdAndCreatedAtBeforeOrderByCreatedAtDesc(user.getUserId(), limit);
+        }
+
         return debtRepository.findByUserId(user.getUserId());
     }
 
