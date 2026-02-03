@@ -91,6 +91,11 @@ public class DebtController {
 
         BigDecimal paymentAmount = paymentDto.getAmount();
         debt.setAmount(debt.getAmount().subtract(paymentAmount));
+
+        if (debt.getEmisPending() != null && debt.getEmisPending() > 0) {
+            debt.setEmisPending(debt.getEmisPending() - 1);
+        }
+
         debtRepository.save(debt);
 
         // Record as expense
@@ -100,6 +105,7 @@ public class DebtController {
                 .orElseGet(() -> {
                     CategoryEntity newCat = new CategoryEntity();
                     newCat.setName("Debt Repayment");
+                    newCat.setType("EXPENSE");
                     newCat.setUser(userRepository.getReferenceById(user.getUserId()));
                     newCat.setAllowedNestingDepth(0);
                     return categoryRepository.save(newCat);
@@ -141,6 +147,60 @@ public class DebtController {
         debtRepository.delete(debt);
     }
 
+    @PutMapping("/{id}/payments/{paymentId}")
+    @Transactional
+    public DebtEntity updatePayment(@PathVariable UUID id, @PathVariable UUID paymentId,
+            @AuthenticationPrincipal CustomUserDetails user, @RequestBody DebtPaymentDTO paymentDto) {
+        DebtEntity debt = debtRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Debt record not found"));
+
+        ExpenseEntity payment = expenseRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Payment record not found"));
+
+        if (!payment.getUser().getId().equals(user.getUserId()) || !payment.getDebt().getId().equals(id)) {
+            throw new RuntimeException("Unauthorized or invalid payment record");
+        }
+
+        BigDecimal oldAmount = payment.getAmount();
+        BigDecimal newAmount = paymentDto.getAmount();
+
+        // Adjust debt balance
+        debt.setAmount(debt.getAmount().add(oldAmount).subtract(newAmount));
+
+        // Update payment record
+        payment.setAmount(newAmount);
+        payment.setExpenseDate(paymentDto.getDate() != null ? paymentDto.getDate() : LocalDate.now());
+
+        expenseRepository.save(payment);
+        return debtRepository.save(debt);
+    }
+
+    @DeleteMapping("/{id}/payments/{paymentId}")
+    @Transactional
+    public DebtEntity deletePayment(@PathVariable UUID id, @PathVariable UUID paymentId,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        DebtEntity debt = debtRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Debt record not found"));
+
+        ExpenseEntity payment = expenseRepository.findById(paymentId)
+                .orElseThrow(() -> new RuntimeException("Payment record not found"));
+
+        if (!payment.getUser().getId().equals(user.getUserId()) || !payment.getDebt().getId().equals(id)) {
+            throw new RuntimeException("Unauthorized or invalid payment record");
+        }
+
+        // Revert debt balance
+        debt.setAmount(debt.getAmount().add(payment.getAmount()));
+
+        // Increment EMIs pending if applicable
+        if (debt.getEmisPending() != null && debt.getTotalEmis() != null) {
+            debt.setEmisPending(debt.getEmisPending() + 1);
+        }
+
+        expenseRepository.delete(payment);
+        return debtRepository.save(debt);
+    }
+
     private void mapDtoToEntity(DebtDTO dto, DebtEntity debt) {
         debt.setName(dto.getName());
         debt.setAmount(dto.getAmount());
@@ -148,6 +208,10 @@ public class DebtController {
         debt.setDueDate(dto.getDueDate());
         debt.setEndDate(dto.getEndDate());
         debt.setTotalEmis(dto.getTotalEmis());
+        debt.setDescription(dto.getDescription());
+        debt.setStartDate(dto.getStartDate());
+        debt.setInitialAmount(dto.getInitialAmount());
+        debt.setEmisPending(dto.getEmisPending());
     }
 
     public static class DebtPaymentDTO {

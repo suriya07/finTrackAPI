@@ -111,6 +111,7 @@ public class SavingController {
                 .orElseGet(() -> {
                     CategoryEntity newCat = new CategoryEntity();
                     newCat.setName("Savings");
+                    newCat.setType("EXPENSE");
                     newCat.setUser(userRepository.getReferenceById(user.getUserId()));
                     newCat.setAllowedNestingDepth(0);
                     return categoryRepository.save(newCat);

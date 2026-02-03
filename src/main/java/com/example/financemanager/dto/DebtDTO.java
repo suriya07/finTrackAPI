@@ -2,7 +2,6 @@ package com.example.financemanager.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.UUID;
 
 public class DebtDTO {
     private String name;
@@ -11,6 +10,10 @@ public class DebtDTO {
     private LocalDate dueDate;
     private LocalDate endDate;
     private Integer totalEmis;
+    private String description;
+    private LocalDate startDate;
+    private BigDecimal initialAmount;
+    private Integer emisPending;
 
     public String getName() {
         return name;
@@ -58,5 +61,37 @@ public class DebtDTO {
 
     public void setTotalEmis(Integer totalEmis) {
         this.totalEmis = totalEmis;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public LocalDate getStartDate() {
+        return startDate;
+    }
+
+    public void setStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public BigDecimal getInitialAmount() {
+        return initialAmount;
+    }
+
+    public void setInitialAmount(BigDecimal initialAmount) {
+        this.initialAmount = initialAmount;
+    }
+
+    public Integer getEmisPending() {
+        return emisPending;
+    }
+
+    public void setEmisPending(Integer emisPending) {
+        this.emisPending = emisPending;
     }
 }
