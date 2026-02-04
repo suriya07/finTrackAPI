@@ -33,7 +33,24 @@ public class IncomeEntity extends BaseAuditableEntity {
     @Column(name = "income_date", nullable = false)
     private LocalDate incomeDate;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private AccountEntity account;
+
     public IncomeEntity() {
+    }
+
+    public AccountEntity getAccount() {
+        return account;
+    }
+
+    public void setAccount(AccountEntity account) {
+        this.account = account;
+    }
+
+    public UUID getAccountId() {
+        return account != null ? account.getId() : null;
     }
 
     public UUID getId() {

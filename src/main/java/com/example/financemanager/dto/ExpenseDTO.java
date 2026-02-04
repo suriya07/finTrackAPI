@@ -10,6 +10,7 @@ public class ExpenseDTO {
     private BigDecimal amount;
     private LocalDate date;
     private UUID categoryId;
+    private UUID accountId;
 
     public String getName() {
         return name;
@@ -49,5 +50,13 @@ public class ExpenseDTO {
 
     public void setCategoryId(UUID categoryId) {
         this.categoryId = categoryId;
+    }
+
+    public UUID getAccountId() {
+        return accountId;
+    }
+
+    public void setAccountId(UUID accountId) {
+        this.accountId = accountId;
     }
 }

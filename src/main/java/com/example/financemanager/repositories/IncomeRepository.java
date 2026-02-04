@@ -12,4 +12,6 @@ public interface IncomeRepository extends JpaRepository<IncomeEntity, UUID> {
 
     List<IncomeEntity> findByUserIdAndIncomeDateBetweenOrderByIncomeDateDesc(UUID userId, LocalDate startDate,
             LocalDate endDate);
+
+    boolean existsByCategoryId(UUID categoryId);
 }

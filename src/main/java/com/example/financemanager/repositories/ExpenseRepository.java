@@ -8,14 +8,16 @@ import java.util.List;
 import java.util.UUID;
 
 public interface ExpenseRepository
-        extends JpaRepository<ExpenseEntity, UUID> {
+                extends JpaRepository<ExpenseEntity, UUID> {
 
-    List<ExpenseEntity> findByUserId(UUID userId);
+        List<ExpenseEntity> findByUserId(UUID userId);
 
-    List<ExpenseEntity> findByUserIdAndExpenseDateBetweenOrderByExpenseDateDesc(UUID userId, LocalDate startDate,
-            LocalDate endDate);
+        List<ExpenseEntity> findByUserIdAndExpenseDateBetweenOrderByExpenseDateDesc(UUID userId, LocalDate startDate,
+                        LocalDate endDate);
 
-    List<ExpenseEntity> findByDebt_Id(UUID debtId);
+        List<ExpenseEntity> findByDebt_Id(UUID debtId);
 
-    List<ExpenseEntity> findBySaving_Id(UUID savingId);
+        List<ExpenseEntity> findBySaving_Id(UUID savingId);
+
+        boolean existsByCategoryId(UUID categoryId);
 }

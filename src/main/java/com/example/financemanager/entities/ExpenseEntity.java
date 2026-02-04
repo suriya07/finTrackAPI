@@ -37,7 +37,24 @@ public class ExpenseEntity extends BaseAuditableEntity {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private SavingEntity saving;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private AccountEntity account;
+
     public ExpenseEntity() {
+    }
+
+    public AccountEntity getAccount() {
+        return account;
+    }
+
+    public void setAccount(AccountEntity account) {
+        this.account = account;
+    }
+
+    public UUID getAccountId() {
+        return account != null ? account.getId() : null;
     }
 
     public UUID getId() {

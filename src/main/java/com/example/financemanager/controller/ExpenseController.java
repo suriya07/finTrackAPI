@@ -1,12 +1,16 @@
 package com.example.financemanager.controller;
 
 import com.example.financemanager.entities.ExpenseEntity;
+import com.example.financemanager.repositories.AccountRepository;
 import com.example.financemanager.repositories.CategoryRepository;
 import com.example.financemanager.repositories.ExpenseRepository;
 import com.example.financemanager.repositories.UserRepository;
 import com.example.financemanager.service.CustomUserDetails;
+import com.example.financemanager.entities.AccountEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.math.BigDecimal;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
@@ -19,14 +23,17 @@ public class ExpenseController {
     private final CategoryRepository categoryRepository;
     private final ExpenseRepository expenseRepository;
     private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
 
     public ExpenseController(
             ExpenseRepository expenseRepository,
             UserRepository userRepository,
-            CategoryRepository categoryRepository) {
+            CategoryRepository categoryRepository,
+            AccountRepository accountRepository) {
         this.expenseRepository = expenseRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
+        this.accountRepository = accountRepository;
     }
 
     @GetMapping
@@ -55,6 +62,15 @@ public class ExpenseController {
 
         mapDtoToEntity(dto, expense, user.getUserId());
 
+        // Update Balance
+        AccountEntity account = expense.getAccount();
+        if (account.getType() == AccountEntity.AccountType.CREDIT_CARD) {
+            account.setBalance(account.getBalance().add(expense.getAmount()));
+        } else {
+            account.setBalance(account.getBalance().subtract(expense.getAmount()));
+        }
+        accountRepository.save(account);
+
         return expenseRepository.save(expense);
     }
 
@@ -70,7 +86,51 @@ public class ExpenseController {
             throw new RuntimeException("Unauthorized");
         }
 
+        // Handle Balance Adjustment
+        BigDecimal oldAmount = expense.getAmount();
+        AccountEntity oldAccount = expense.getAccount();
+
         mapDtoToEntity(dto, expense, user.getUserId());
+
+        AccountEntity newAccount = expense.getAccount();
+        BigDecimal newAmount = expense.getAmount();
+
+        if (oldAccount == null) {
+            // Old record had no account, just update the new one
+            if (newAccount.getType() == AccountEntity.AccountType.CREDIT_CARD) {
+                newAccount.setBalance(newAccount.getBalance().add(newAmount));
+            } else {
+                newAccount.setBalance(newAccount.getBalance().subtract(newAmount));
+            }
+            accountRepository.save(newAccount);
+        } else if (oldAccount.getId().equals(newAccount.getId())) {
+            // Same account: adjust balance
+            if (newAccount.getType() == AccountEntity.AccountType.CREDIT_CARD) {
+                // For CC: subtract old, add new
+                newAccount.setBalance(newAccount.getBalance().subtract(oldAmount).add(newAmount));
+            } else {
+                // For Savings: add old, subtract new
+                newAccount.setBalance(newAccount.getBalance().add(oldAmount).subtract(newAmount));
+            }
+            accountRepository.save(newAccount);
+        } else {
+            // Different accounts
+            if (oldAccount.getType() == AccountEntity.AccountType.CREDIT_CARD) {
+                oldAccount.setBalance(oldAccount.getBalance().subtract(oldAmount));
+            } else {
+                oldAccount.setBalance(oldAccount.getBalance().add(oldAmount));
+            }
+
+            if (newAccount.getType() == AccountEntity.AccountType.CREDIT_CARD) {
+                newAccount.setBalance(newAccount.getBalance().add(newAmount));
+            } else {
+                newAccount.setBalance(newAccount.getBalance().subtract(newAmount));
+            }
+
+            accountRepository.save(oldAccount);
+            accountRepository.save(newAccount);
+        }
+
         return expenseRepository.save(expense);
     }
 
@@ -83,6 +143,17 @@ public class ExpenseController {
 
         if (!expense.getUser().getId().equals(user.getUserId())) {
             throw new RuntimeException("Unauthorized");
+        }
+
+        // Update Balance
+        AccountEntity account = expense.getAccount();
+        if (account != null) {
+            if (account.getType() == AccountEntity.AccountType.CREDIT_CARD) {
+                account.setBalance(account.getBalance().subtract(expense.getAmount()));
+            } else {
+                account.setBalance(account.getBalance().add(expense.getAmount()));
+            }
+            accountRepository.save(account);
         }
 
         expenseRepository.delete(expense);
@@ -104,6 +175,19 @@ public class ExpenseController {
                 throw new RuntimeException("Invalid category");
             }
             expense.setCategory(category);
+        }
+
+        if (dto.getAccountId() != null) {
+            com.example.financemanager.entities.AccountEntity account = accountRepository
+                    .findById(dto.getAccountId())
+                    .orElseThrow(() -> new RuntimeException("Account not found"));
+
+            if (!account.getUser().getId().equals(userId)) {
+                throw new RuntimeException("Invalid account");
+            }
+            expense.setAccount(account);
+        } else {
+            throw new RuntimeException("Account is mandatory for expenses");
         }
     }
 }
