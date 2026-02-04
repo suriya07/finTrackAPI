@@ -19,5 +19,7 @@ public interface ExpenseRepository
 
         List<ExpenseEntity> findBySaving_Id(UUID savingId);
 
+        List<ExpenseEntity> findByAccount_Id(UUID accountId);
+
         boolean existsByCategoryId(UUID categoryId);
 }

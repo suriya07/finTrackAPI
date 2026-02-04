@@ -4,6 +4,7 @@ import com.example.financemanager.dto.DebtDTO;
 import com.example.financemanager.entities.CategoryEntity;
 import com.example.financemanager.entities.DebtEntity;
 import com.example.financemanager.entities.ExpenseEntity;
+import com.example.financemanager.repositories.AccountRepository;
 import com.example.financemanager.repositories.CategoryRepository;
 import com.example.financemanager.repositories.DebtRepository;
 import com.example.financemanager.repositories.ExpenseRepository;
@@ -29,13 +30,16 @@ public class DebtController {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final ExpenseRepository expenseRepository;
+    private final AccountRepository accountRepository;
 
     public DebtController(DebtRepository debtRepository, UserRepository userRepository,
-            CategoryRepository categoryRepository, ExpenseRepository expenseRepository) {
+            CategoryRepository categoryRepository, ExpenseRepository expenseRepository,
+            AccountRepository accountRepository) {
         this.debtRepository = debtRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.expenseRepository = expenseRepository;
+        this.accountRepository = accountRepository;
     }
 
     @GetMapping
@@ -118,6 +122,26 @@ public class DebtController {
         expense.setAmount(paymentAmount);
         expense.setExpenseDate(paymentDto.getDate() != null ? paymentDto.getDate() : LocalDate.now());
         expense.setDebt(debt); // Link expense to debt
+
+        if (paymentDto.getAccountId() != null) {
+            com.example.financemanager.entities.AccountEntity account = accountRepository
+                    .findById(paymentDto.getAccountId())
+                    .orElseThrow(() -> new RuntimeException("Account not found"));
+
+            if (!account.getUser().getId().equals(user.getUserId())) {
+                throw new RuntimeException("Invalid account");
+            }
+            expense.setAccount(account);
+
+            // Update Account Balance
+            if (account.getType() == com.example.financemanager.entities.AccountEntity.AccountType.CREDIT_CARD) {
+                account.setBalance(account.getBalance().add(paymentAmount));
+            } else {
+                account.setBalance(account.getBalance().subtract(paymentAmount));
+            }
+            accountRepository.save(account);
+        }
+
         expenseRepository.save(expense);
 
         return debt;
@@ -171,6 +195,18 @@ public class DebtController {
         payment.setAmount(newAmount);
         payment.setExpenseDate(paymentDto.getDate() != null ? paymentDto.getDate() : LocalDate.now());
 
+        // Handle Account Balance Adjustment if account is linked
+        com.example.financemanager.entities.AccountEntity account = payment.getAccount();
+        if (account != null) {
+            BigDecimal diff = newAmount.subtract(oldAmount);
+            if (account.getType() == com.example.financemanager.entities.AccountEntity.AccountType.CREDIT_CARD) {
+                account.setBalance(account.getBalance().add(diff));
+            } else {
+                account.setBalance(account.getBalance().subtract(diff));
+            }
+            accountRepository.save(account);
+        }
+
         expenseRepository.save(payment);
         return debtRepository.save(debt);
     }
@@ -197,6 +233,17 @@ public class DebtController {
             debt.setEmisPending(debt.getEmisPending() + 1);
         }
 
+        // Revert account balance if linked
+        com.example.financemanager.entities.AccountEntity account = payment.getAccount();
+        if (account != null) {
+            if (account.getType() == com.example.financemanager.entities.AccountEntity.AccountType.CREDIT_CARD) {
+                account.setBalance(account.getBalance().subtract(payment.getAmount()));
+            } else {
+                account.setBalance(account.getBalance().add(payment.getAmount()));
+            }
+            accountRepository.save(account);
+        }
+
         expenseRepository.delete(payment);
         return debtRepository.save(debt);
     }
@@ -212,11 +259,15 @@ public class DebtController {
         debt.setStartDate(dto.getStartDate());
         debt.setInitialAmount(dto.getInitialAmount());
         debt.setEmisPending(dto.getEmisPending());
+        if (dto.getLoanType() != null) {
+            debt.setLoanType(com.example.financemanager.entities.LoanType.valueOf(dto.getLoanType()));
+        }
     }
 
     public static class DebtPaymentDTO {
         private BigDecimal amount;
         private LocalDate date;
+        private UUID accountId;
 
         public BigDecimal getAmount() {
             return amount;
@@ -232,6 +283,14 @@ public class DebtController {
 
         public void setDate(LocalDate date) {
             this.date = date;
+        }
+
+        public UUID getAccountId() {
+            return accountId;
+        }
+
+        public void setAccountId(UUID accountId) {
+            this.accountId = accountId;
         }
     }
 }

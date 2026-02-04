@@ -14,6 +14,7 @@ public class DebtDTO {
     private LocalDate startDate;
     private BigDecimal initialAmount;
     private Integer emisPending;
+    private String loanType;
 
     public String getName() {
         return name;
@@ -93,5 +94,13 @@ public class DebtDTO {
 
     public void setEmisPending(Integer emisPending) {
         this.emisPending = emisPending;
+    }
+
+    public String getLoanType() {
+        return loanType;
+    }
+
+    public void setLoanType(String loanType) {
+        this.loanType = loanType;
     }
 }

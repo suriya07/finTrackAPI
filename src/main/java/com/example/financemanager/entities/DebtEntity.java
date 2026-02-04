@@ -39,6 +39,9 @@ public class DebtEntity extends BaseAuditableEntity {
     private BigDecimal initialAmount;
     private Integer emisPending;
 
+    @Enumerated(EnumType.STRING)
+    private LoanType loanType;
+
     public DebtEntity() {
     }
 
@@ -136,5 +139,13 @@ public class DebtEntity extends BaseAuditableEntity {
 
     public void setEmisPending(Integer emisPending) {
         this.emisPending = emisPending;
+    }
+
+    public LoanType getLoanType() {
+        return loanType;
+    }
+
+    public void setLoanType(LoanType loanType) {
+        this.loanType = loanType;
     }
 }

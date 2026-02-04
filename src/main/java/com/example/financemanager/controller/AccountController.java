@@ -3,12 +3,16 @@ package com.example.financemanager.controller;
 import com.example.financemanager.dto.AccountDTO;
 import com.example.financemanager.entities.AccountEntity;
 import com.example.financemanager.repositories.AccountRepository;
+import com.example.financemanager.repositories.ExpenseRepository;
+import com.example.financemanager.repositories.IncomeRepository;
 import com.example.financemanager.repositories.UserRepository;
 import com.example.financemanager.service.CustomUserDetails;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -19,10 +23,15 @@ public class AccountController {
 
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
+    private final ExpenseRepository expenseRepository;
+    private final IncomeRepository incomeRepository;
 
-    public AccountController(AccountRepository accountRepository, UserRepository userRepository) {
+    public AccountController(AccountRepository accountRepository, UserRepository userRepository,
+            ExpenseRepository expenseRepository, IncomeRepository incomeRepository) {
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
+        this.expenseRepository = expenseRepository;
+        this.incomeRepository = incomeRepository;
     }
 
     @GetMapping
@@ -51,6 +60,39 @@ public class AccountController {
         }
 
         mapDtoToEntity(dto, account);
+        return convertToDTO(accountRepository.save(account));
+    }
+
+    @PostMapping("/{id}/recalculate")
+    @Transactional
+    public AccountDTO recalculateBalance(@AuthenticationPrincipal CustomUserDetails user, @PathVariable UUID id) {
+        AccountEntity account = accountRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Account not found"));
+
+        if (!account.getUser().getId().equals(user.getUserId())) {
+            throw new RuntimeException("Unauthorized");
+        }
+
+        BigDecimal totalExpenses = expenseRepository.findByAccount_Id(id).stream()
+                .map(e -> e.getAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalIncomes = incomeRepository.findByAccount_Id(id).stream()
+                .map(i -> i.getAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal newBalance;
+        if (account.getType() == AccountEntity.AccountType.CREDIT_CARD) {
+            // For CC, balance = spent - paid
+            // In our system, expenses increase CC balance (spent), incomes decrease it
+            // (paid)
+            newBalance = totalExpenses.subtract(totalIncomes);
+        } else {
+            // For Savings, balance = incomes - expenses
+            newBalance = totalIncomes.subtract(totalExpenses);
+        }
+
+        account.setBalance(newBalance);
         return convertToDTO(accountRepository.save(account));
     }
 

@@ -81,6 +81,10 @@ public class ExpenseEntity extends BaseAuditableEntity {
         this.category = category;
     }
 
+    public UUID getCategoryId() {
+        return category != null ? category.getId() : null;
+    }
+
     public String getName() {
         return name;
     }

@@ -4,6 +4,7 @@ import com.example.financemanager.dto.SavingDTO;
 import com.example.financemanager.entities.SavingEntity;
 import com.example.financemanager.entities.CategoryEntity;
 import com.example.financemanager.entities.ExpenseEntity;
+import com.example.financemanager.repositories.AccountRepository;
 import com.example.financemanager.repositories.CategoryRepository;
 import com.example.financemanager.repositories.ExpenseRepository;
 import com.example.financemanager.repositories.SavingRepository;
@@ -29,13 +30,16 @@ public class SavingController {
     private final UserRepository userRepository;
     private final CategoryRepository categoryRepository;
     private final ExpenseRepository expenseRepository;
+    private final AccountRepository accountRepository;
 
     public SavingController(SavingRepository savingRepository, UserRepository userRepository,
-            CategoryRepository categoryRepository, ExpenseRepository expenseRepository) {
+            CategoryRepository categoryRepository, ExpenseRepository expenseRepository,
+            AccountRepository accountRepository) {
         this.savingRepository = savingRepository;
         this.userRepository = userRepository;
         this.categoryRepository = categoryRepository;
         this.expenseRepository = expenseRepository;
+        this.accountRepository = accountRepository;
     }
 
     @GetMapping
@@ -124,6 +128,26 @@ public class SavingController {
         expense.setAmount(contributionAmount);
         expense.setExpenseDate(contributionDto.getDate() != null ? contributionDto.getDate() : LocalDate.now());
         expense.setSaving(saving);
+
+        if (contributionDto.getAccountId() != null) {
+            com.example.financemanager.entities.AccountEntity account = accountRepository
+                    .findById(contributionDto.getAccountId())
+                    .orElseThrow(() -> new RuntimeException("Account not found"));
+
+            if (!account.getUser().getId().equals(user.getUserId())) {
+                throw new RuntimeException("Invalid account");
+            }
+            expense.setAccount(account);
+
+            // Update Account Balance
+            if (account.getType() == com.example.financemanager.entities.AccountEntity.AccountType.CREDIT_CARD) {
+                account.setBalance(account.getBalance().add(contributionAmount));
+            } else {
+                account.setBalance(account.getBalance().subtract(contributionAmount));
+            }
+            accountRepository.save(account);
+        }
+
         expenseRepository.save(expense);
 
         return saving;
@@ -152,6 +176,7 @@ public class SavingController {
     public static class ContributionDTO {
         private BigDecimal amount;
         private LocalDate date;
+        private UUID accountId;
 
         public BigDecimal getAmount() {
             return amount;
@@ -167,6 +192,14 @@ public class SavingController {
 
         public void setDate(LocalDate date) {
             this.date = date;
+        }
+
+        public UUID getAccountId() {
+            return accountId;
+        }
+
+        public void setAccountId(UUID accountId) {
+            this.accountId = accountId;
         }
     }
 }
