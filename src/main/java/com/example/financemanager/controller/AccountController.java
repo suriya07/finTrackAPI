@@ -13,9 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import com.example.financemanager.entities.ExpenseEntity;
 
 @RestController
 @RequestMapping("/accounts")
@@ -119,6 +121,41 @@ public class AccountController {
         dto.setBillingCycleStartDay(entity.getBillingCycleStartDay());
         dto.setBillDateDay(entity.getBillDateDay());
         dto.setDueDateDay(entity.getDueDateDay());
+
+        if (entity.getType() == AccountEntity.AccountType.CREDIT_CARD) {
+            Integer cycleStartDay = entity.getBillingCycleStartDay();
+            if (cycleStartDay != null) {
+                LocalDate today = LocalDate.now();
+                LocalDate cycleStartDate;
+                int day = cycleStartDay;
+
+                // Handle valid days for months
+                if (today.getDayOfMonth() < day) {
+                    LocalDate lastMonth = today.minusMonths(1);
+                    cycleStartDate = lastMonth.withDayOfMonth(Math.min(day, lastMonth.lengthOfMonth()));
+                } else {
+                    cycleStartDate = today.withDayOfMonth(Math.min(day, today.lengthOfMonth()));
+                }
+
+                List<ExpenseEntity> cycleExpenses = expenseRepository
+                        .findByAccount_IdAndExpenseDateGreaterThanEqual(entity.getId(), cycleStartDate);
+                BigDecimal currentCycleSpent = cycleExpenses.stream()
+                        .map(ExpenseEntity::getAmount)
+                        .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                dto.setCurrentCycleSpent(currentCycleSpent);
+
+                // Last Statement Balance = Total Balance - Current Cycle Spent
+                // If total balance (total debt) is 1500 and 500 is from this cycle, then 1000
+                // is from last statement
+                BigDecimal lastStatementBalance = entity.getBalance().subtract(currentCycleSpent);
+                dto.setLastStatementBalance(lastStatementBalance);
+
+                // Paid if last statement balance is zero or less (meaning fully paid off)
+                dto.setLastStatementPaid(lastStatementBalance.compareTo(BigDecimal.ZERO) <= 0);
+            }
+        }
+
         return dto;
     }
 

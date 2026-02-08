@@ -13,6 +13,9 @@ public class AccountDTO {
     private Integer billingCycleStartDay;
     private Integer billDateDay;
     private Integer dueDateDay;
+    private BigDecimal currentCycleSpent;
+    private BigDecimal lastStatementBalance;
+    private Boolean lastStatementPaid;
 
     public AccountDTO() {
     }
@@ -79,5 +82,29 @@ public class AccountDTO {
 
     public void setDueDateDay(Integer dueDateDay) {
         this.dueDateDay = dueDateDay;
+    }
+
+    public BigDecimal getCurrentCycleSpent() {
+        return currentCycleSpent;
+    }
+
+    public void setCurrentCycleSpent(BigDecimal currentCycleSpent) {
+        this.currentCycleSpent = currentCycleSpent;
+    }
+
+    public BigDecimal getLastStatementBalance() {
+        return lastStatementBalance;
+    }
+
+    public void setLastStatementBalance(BigDecimal lastStatementBalance) {
+        this.lastStatementBalance = lastStatementBalance;
+    }
+
+    public Boolean getLastStatementPaid() {
+        return lastStatementPaid;
+    }
+
+    public void setLastStatementPaid(Boolean lastStatementPaid) {
+        this.lastStatementPaid = lastStatementPaid;
     }
 }
