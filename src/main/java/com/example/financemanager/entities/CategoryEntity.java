@@ -16,6 +16,7 @@ public class CategoryEntity extends BaseAuditableEntity {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private UserEntity user;
 
+    @Column(columnDefinition = "TEXT")
     private String name;
 
     @Column(name = "type", nullable = false)

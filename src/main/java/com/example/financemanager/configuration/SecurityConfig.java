@@ -59,11 +59,23 @@ public class SecurityConfig {
         @Bean
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration config = new CorsConfiguration();
-                config.setAllowedOrigins(List.of("http://localhost:3000", "http://localhost:8989"));
-                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+                // Allow all localhost origins for development
+                config.setAllowedOriginPatterns(List.of(
+                                "http://localhost:*",
+                                "http://127.0.0.1:*",
+                                "http://192.168.1.*:*"));
+                config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+                config.setAllowedHeaders(List.of(
+                                "Authorization",
+                                "Content-Type",
+                                "Origin",
+                                "Accept",
+                                "X-Requested-With",
+                                "Access-Control-Request-Method",
+                                "Access-Control-Request-Headers"));
                 config.setExposedHeaders(List.of("Authorization"));
                 config.setAllowCredentials(true);
+                config.setMaxAge(3600L); // Cache preflight response for 1 hour
 
                 UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
                 source.registerCorsConfiguration("/**", config);

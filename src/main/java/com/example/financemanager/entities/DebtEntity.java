@@ -19,7 +19,7 @@ public class DebtEntity extends BaseAuditableEntity {
     @JsonIgnore
     private UserEntity user;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String name;
 
     @Column(nullable = false)
@@ -34,6 +34,7 @@ public class DebtEntity extends BaseAuditableEntity {
     private LocalDate endDate;
     private Integer totalEmis;
 
+    @Column(columnDefinition = "TEXT")
     private String description;
     private LocalDate startDate;
     private BigDecimal initialAmount;

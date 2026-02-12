@@ -19,9 +19,10 @@ public class SavingEntity extends BaseAuditableEntity {
     @JsonIgnore
     private UserEntity user;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String name;
 
+    @Column(columnDefinition = "TEXT")
     private String category;
 
     @Column(nullable = false)

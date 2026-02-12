@@ -17,7 +17,7 @@ public class AccountEntity extends BaseAuditableEntity {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private UserEntity user;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String name;
 
     @Enumerated(EnumType.STRING)

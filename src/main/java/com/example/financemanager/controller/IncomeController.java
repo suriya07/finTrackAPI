@@ -16,6 +16,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
@@ -40,13 +42,44 @@ public class IncomeController {
     public List<IncomeEntity> getIncomes(
             @AuthenticationPrincipal CustomUserDetails user,
             @RequestParam(required = false) Integer month,
-            @RequestParam(required = false) Integer year) {
+            @RequestParam(required = false) Integer year,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate fromDate,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate toDate,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) UUID accountId,
+            @RequestParam(required = false) String search) {
 
-        if (month != null && year != null) {
+        LocalDate start = fromDate;
+        LocalDate end = toDate;
+
+        // If no explicit dates, use month boundaries as default context
+        if (start == null && end == null && month != null && year != null) {
             YearMonth yearMonth = YearMonth.of(year, month);
-            LocalDate start = yearMonth.atDay(1);
-            LocalDate end = yearMonth.atEndOfMonth();
-            return incomeRepository.findByUserIdAndIncomeDateBetweenOrderByIncomeDateDesc(user.getUserId(), start, end);
+            start = yearMonth.atDay(1);
+            end = yearMonth.atEndOfMonth();
+        }
+
+        Collection<UUID> categoryIds = null;
+        if (categoryId != null) {
+            categoryIds = new HashSet<>();
+            categoryIds.add(categoryId);
+            CategoryEntity category = categoryRepository.findById(categoryId)
+                    .orElse(null);
+            if (category != null) {
+                collectCategoryIdsRecursively(category, categoryIds);
+            }
+        }
+
+        // Use proven stable methods for simple date/month queries
+        if (accountId == null && categoryIds == null && search == null) {
+            if (start != null && end != null) {
+                return incomeRepository.findByUserIdAndIncomeDateBetweenOrderByIncomeDateDesc(user.getUserId(), start,
+                        end);
+            }
+        }
+
+        if (start != null || end != null || accountId != null || categoryIds != null || search != null) {
+            return incomeRepository.findFilteredIncomes(user.getUserId(), start, end, accountId, categoryIds, search);
         }
 
         return incomeRepository.findByUserIdOrderByIncomeDateDesc(user.getUserId());
@@ -183,6 +216,15 @@ public class IncomeController {
             entity.setAccount(account);
         } else if (entity.getAccount() == null) {
             throw new RuntimeException("Account is mandatory for incomes");
+        }
+    }
+
+    private void collectCategoryIdsRecursively(CategoryEntity category, Collection<UUID> ids) {
+        if (category.getSubCategories() != null) {
+            for (CategoryEntity sub : category.getSubCategories()) {
+                ids.add(sub.getId());
+                collectCategoryIdsRecursively(sub, ids);
+            }
         }
     }
 }

@@ -22,7 +22,10 @@ public class ExpenseEntity extends BaseAuditableEntity {
     @JoinColumn(name = "category_id")
     private CategoryEntity category;
 
+    @Column(columnDefinition = "TEXT")
     private String name;
+
+    @Column(columnDefinition = "TEXT")
     private String description;
     private BigDecimal amount;
     private LocalDate expenseDate;
