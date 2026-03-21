@@ -140,6 +140,8 @@ public class DebtController {
                 account.setBalance(account.getBalance().subtract(paymentAmount));
             }
             accountRepository.save(account);
+        } else {
+            throw new RuntimeException("Account is mandatory for debt payments");
         }
 
         expenseRepository.save(expense);

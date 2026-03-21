@@ -146,6 +146,8 @@ public class SavingController {
                 account.setBalance(account.getBalance().subtract(contributionAmount));
             }
             accountRepository.save(account);
+        } else {
+            throw new RuntimeException("Account is mandatory for savings contributions");
         }
 
         expenseRepository.save(expense);

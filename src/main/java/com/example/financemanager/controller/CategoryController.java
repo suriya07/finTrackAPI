@@ -117,9 +117,9 @@ public class CategoryController {
 
         // Check if any category in the hierarchy is in use
         for (CategoryEntity cat : allCategories) {
-            if (expenseRepository.existsByCategoryId(cat.getId()) ||
-                    incomeRepository.existsByCategoryId(cat.getId()) ||
-                    budgetRepository.existsByCategoryId(cat.getId())) {
+            if (expenseRepository.existsByCategory_Id(cat.getId()) ||
+                    incomeRepository.existsByCategory_Id(cat.getId()) ||
+                    budgetRepository.existsByCategory_Id(cat.getId())) {
                 return ResponseEntity.badRequest().body("Category \"" + cat.getName()
                         + "\" or one of its sub-categories is in use and cannot be deleted. " +
                         "Please reassign associated transactions/budgets first.");

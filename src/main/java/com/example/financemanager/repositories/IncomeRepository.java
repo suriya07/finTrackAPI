@@ -36,5 +36,5 @@ public interface IncomeRepository extends JpaRepository<IncomeEntity, UUID> {
 
         List<IncomeEntity> findByAccount_Id(UUID accountId);
 
-        boolean existsByCategoryId(UUID categoryId);
+        boolean existsByCategory_Id(UUID categoryId);
 }

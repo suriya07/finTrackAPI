@@ -13,9 +13,9 @@ import java.util.UUID;
 public interface BudgetRepository extends JpaRepository<BudgetEntity, UUID> {
     List<BudgetEntity> findByUserId(UUID userId);
 
-    Optional<BudgetEntity> findByUserIdAndCategoryIdAndMonth(UUID userId, UUID categoryId, LocalDate month);
+    Optional<BudgetEntity> findByUserIdAndCategory_IdAndMonth(UUID userId, UUID categoryId, LocalDate month);
 
-    boolean existsByUserIdAndCategoryIdAndMonth(UUID userId, UUID categoryId, LocalDate month);
+    boolean existsByUserIdAndCategory_IdAndMonth(UUID userId, UUID categoryId, LocalDate month);
 
-    boolean existsByCategoryId(UUID categoryId);
+    boolean existsByCategory_Id(UUID categoryId);
 }

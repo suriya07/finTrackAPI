@@ -51,7 +51,7 @@ public class BudgetController {
     @PostMapping
     public BudgetEntity createBudget(@AuthenticationPrincipal CustomUserDetails user, @RequestBody BudgetDTO dto) {
         // Logic to prevent duplicate budgets for same month/category
-        if (budgetRepository.existsByUserIdAndCategoryIdAndMonth(user.getUserId(), dto.getCategoryId(),
+        if (budgetRepository.existsByUserIdAndCategory_IdAndMonth(user.getUserId(), dto.getCategoryId(),
                 dto.getMonth())) {
             throw new RuntimeException("Budget already exists for this category and month");
         }

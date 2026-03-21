@@ -52,5 +52,5 @@ public interface ExpenseRepository
 
         List<ExpenseEntity> findByAccount_IdAndExpenseDateGreaterThanEqual(UUID accountId, LocalDate date);
 
-        boolean existsByCategoryId(UUID categoryId);
+        boolean existsByCategory_Id(UUID categoryId);
 }
