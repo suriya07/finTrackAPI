@@ -10,4 +10,8 @@ import java.util.UUID;
 @Repository
 public interface CategoryRepository extends JpaRepository<CategoryEntity, UUID> {
     List<CategoryEntity> findByUserId(UUID userId);
+
+    boolean existsByUserIdAndNameIgnoreCaseAndParentIsNull(UUID userId, String name);
+
+    boolean existsByUserIdAndNameIgnoreCaseAndParentId(UUID userId, String name, UUID parentId);
 }

@@ -91,11 +91,21 @@ public class CategoryController {
                 throw new RuntimeException("Parent category does not allow further nesting");
             }
 
+            // Validate: No duplicate subcategory name under the same parent
+            if (categoryRepository.existsByUserIdAndNameIgnoreCaseAndParentId(user.getUserId(), dto.getName(), dto.getParentId())) {
+                throw new RuntimeException("A subcategory with this name already exists under the selected parent");
+            }
+
             category.setParent(parent);
 
             // Decrease depth limit for child
             if (parent.getAllowedNestingDepth() != null) {
                 category.setAllowedNestingDepth(parent.getAllowedNestingDepth() - 1);
+            }
+        } else {
+            // Validate: No duplicate root category name for this user
+            if (categoryRepository.existsByUserIdAndNameIgnoreCaseAndParentIsNull(user.getUserId(), dto.getName())) {
+                throw new RuntimeException("A category with this name already exists");
             }
         }
 
