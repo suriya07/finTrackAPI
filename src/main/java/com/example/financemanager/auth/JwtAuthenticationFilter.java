@@ -75,6 +75,8 @@ public class JwtAuthenticationFilter
         String path = request.getRequestURI();
         return path.equals("/auth/login") ||
                 path.equals("/auth/signup") ||
+                path.equals("/auth/forgot-password") ||
+                path.equals("/auth/reset-password") ||
                 path.equals("/error") ||
                 "OPTIONS".equals(request.getMethod());
     }

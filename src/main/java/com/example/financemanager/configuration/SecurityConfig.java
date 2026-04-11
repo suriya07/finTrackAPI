@@ -42,16 +42,13 @@ public class SecurityConfig {
                                                 .requestMatchers("/error").permitAll()
                                                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**")
                                                 .permitAll()
-                                                .requestMatchers("/auth/login", "/auth/signup").permitAll()
+                                                .requestMatchers("/auth/login", "/auth/signup",
+                                                                "/auth/forgot-password", "/auth/reset-password").permitAll()
                                                 .requestMatchers("/auth/me").authenticated()
                                                 .anyRequest().authenticated())
                                 .authenticationProvider(authenticationProvider)
                                 .addFilterBefore(jwtAuthenticationFilter,
                                                 UsernamePasswordAuthenticationFilter.class);
-
-                http.addFilterBefore(
-                                jwtAuthenticationFilter,
-                                UsernamePasswordAuthenticationFilter.class);
 
                 return http.build();
         }
