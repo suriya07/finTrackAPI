@@ -1,0 +1,27 @@
+[Unit]
+Description=FinTrack Spring Boot API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=fintrack
+Group=fintrack
+WorkingDirectory=/opt/fintrack-api
+EnvironmentFile=/etc/fintrack-api.env
+ExecStart=/usr/bin/java -Xms256m -Xmx512m -jar /opt/fintrack-api/app.jar
+Restart=on-failure
+RestartSec=10
+SuccessExitStatus=143
+StandardOutput=journal
+StandardError=journal
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/fintrack-api/logs /tmp
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,4 +14,6 @@ public interface DebtRepository extends JpaRepository<DebtEntity, UUID> {
     List<DebtEntity> findByUserId(UUID userId);
 
     List<DebtEntity> findByUserIdAndCreatedAtBeforeOrderByCreatedAtDesc(UUID userId, Instant date);
+
+    List<DebtEntity> findByDueDateBetween(LocalDate from, LocalDate to);
 }

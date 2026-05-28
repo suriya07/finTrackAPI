@@ -51,4 +51,31 @@ public class EmailService {
             log.warn("Reset link (fallback): {}", resetLink);
         }
     }
+
+    /**
+     * Sends a plain-text notification. Falls back to logging when mail is not
+     * configured (e.g. local dev), so reminders are still observable.
+     */
+    public void sendNotificationEmail(String toEmail, String subject, String body) {
+        if (mailSender == null) {
+            log.info("=== EMAIL (mail not configured) ===");
+            log.info("To: {}", toEmail);
+            log.info("Subject: {}", subject);
+            log.info("{}", body);
+            log.info("===================================");
+            return;
+        }
+
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromAddress);
+        message.setTo(toEmail);
+        message.setSubject(subject);
+        message.setText(body);
+
+        try {
+            mailSender.send(message);
+        } catch (Exception e) {
+            log.error("Failed to send notification email to {}: {}", toEmail, e.getMessage());
+        }
+    }
 }

@@ -2,3 +2,8 @@ target
 .idea
 mvnw
 mvnw.cmd
+
+# Local-only secrets / overrides
+application-local.properties
+src/main/resources/application-local.properties
+.env

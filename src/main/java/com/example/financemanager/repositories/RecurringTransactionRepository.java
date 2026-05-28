@@ -20,4 +20,16 @@ public interface RecurringTransactionRepository extends JpaRepository<RecurringT
     List<RecurringTransactionEntity> findDueTransactions(
             @Param("userId") UUID userId,
             @Param("today") LocalDate today);
+
+    @Query("SELECT r FROM RecurringTransactionEntity r WHERE r.isActive = true " +
+           "AND r.nextDueDate <= :today " +
+           "AND (r.endDate IS NULL OR r.endDate >= :today)")
+    List<RecurringTransactionEntity> findAllDueTransactions(@Param("today") LocalDate today);
+
+    @Query("SELECT r FROM RecurringTransactionEntity r WHERE r.isActive = true " +
+           "AND r.nextDueDate BETWEEN :from AND :to " +
+           "AND (r.endDate IS NULL OR r.endDate >= :from)")
+    List<RecurringTransactionEntity> findUpcoming(
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to);
 }

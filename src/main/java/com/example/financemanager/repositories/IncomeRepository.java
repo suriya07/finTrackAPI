@@ -1,6 +1,8 @@
 package com.example.financemanager.repositories;
 
 import com.example.financemanager.entities.IncomeEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -33,6 +35,36 @@ public interface IncomeRepository extends JpaRepository<IncomeEntity, UUID> {
                         @Param("accountId") UUID accountId,
                         @Param("categoryIds") java.util.Collection<UUID> categoryIds,
                         @Param("search") String search);
+
+        @Query(value = "SELECT i.* FROM incomes i " +
+                        "LEFT JOIN categories c ON c.id = i.category_id " +
+                        "WHERE i.user_id = :userId " +
+                        "AND (CAST(:startDate AS date) IS NULL OR i.income_date >= CAST(:startDate AS date)) " +
+                        "AND (CAST(:endDate AS date) IS NULL OR i.income_date <= CAST(:endDate AS date)) " +
+                        "AND (CAST(:accountId AS uuid) IS NULL OR i.account_id = CAST(:accountId AS uuid)) " +
+                        "AND (:categoryIds IS NULL OR c.id IN :categoryIds) " +
+                        "AND (:search IS NULL OR " +
+                        "     (i.name::text ILIKE CONCAT('%', :search, '%')) OR " +
+                        "     (i.description IS NOT NULL AND i.description::text ILIKE CONCAT('%', :search, '%')))",
+                        countQuery = "SELECT count(*) FROM incomes i " +
+                        "LEFT JOIN categories c ON c.id = i.category_id " +
+                        "WHERE i.user_id = :userId " +
+                        "AND (CAST(:startDate AS date) IS NULL OR i.income_date >= CAST(:startDate AS date)) " +
+                        "AND (CAST(:endDate AS date) IS NULL OR i.income_date <= CAST(:endDate AS date)) " +
+                        "AND (CAST(:accountId AS uuid) IS NULL OR i.account_id = CAST(:accountId AS uuid)) " +
+                        "AND (:categoryIds IS NULL OR c.id IN :categoryIds) " +
+                        "AND (:search IS NULL OR " +
+                        "     (i.name::text ILIKE CONCAT('%', :search, '%')) OR " +
+                        "     (i.description IS NOT NULL AND i.description::text ILIKE CONCAT('%', :search, '%')))",
+                        nativeQuery = true)
+        Page<IncomeEntity> findFilteredIncomesPaged(
+                        @Param("userId") UUID userId,
+                        @Param("startDate") LocalDate startDate,
+                        @Param("endDate") LocalDate endDate,
+                        @Param("accountId") UUID accountId,
+                        @Param("categoryIds") java.util.Collection<UUID> categoryIds,
+                        @Param("search") String search,
+                        Pageable pageable);
 
         List<IncomeEntity> findByAccount_Id(UUID accountId);
 

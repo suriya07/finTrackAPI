@@ -1,5 +1,6 @@
 package com.example.financemanager.configuration;
 
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.AuthenticationProvider;
@@ -31,6 +32,22 @@ public class SecurityConfig {
         }
 
         @Bean
+        public RateLimitingFilter rateLimitingFilter() {
+                return new RateLimitingFilter();
+        }
+
+        /**
+         * Prevents the servlet container from auto-registering the rate limiter for
+         * every URL; it runs only where we add it in the security chain below.
+         */
+        @Bean
+        public FilterRegistrationBean<RateLimitingFilter> rateLimitingFilterRegistration(RateLimitingFilter filter) {
+                FilterRegistrationBean<RateLimitingFilter> registration = new FilterRegistrationBean<>(filter);
+                registration.setEnabled(false);
+                return registration;
+        }
+
+        @Bean
         public SecurityFilterChain filterChain(HttpSecurity http)
                         throws Exception {
 
@@ -47,6 +64,7 @@ public class SecurityConfig {
                                                 .requestMatchers("/auth/me").authenticated()
                                                 .anyRequest().authenticated())
                                 .authenticationProvider(authenticationProvider)
+                                .addFilterBefore(rateLimitingFilter(), UsernamePasswordAuthenticationFilter.class)
                                 .addFilterBefore(jwtAuthenticationFilter,
                                                 UsernamePasswordAuthenticationFilter.class);
 
