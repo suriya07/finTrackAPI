@@ -1,62 +1,24 @@
-# Pre-launch staging deployment — AWS EC2 + RDS (ap-south-1)
+# Single-box staging deployment — AWS EC2 (ap-south-1)
 
-Single-instance staging deploy of finTrackAPI to AWS. Everything sized for the 12-month free tier.
+One `t3.micro` Ubuntu instance running Spring Boot + Postgres + Nginx. No RDS, no domain, no TLS yet — accessed by Elastic IP over HTTP. Sized for the 12-month AWS free tier.
 
 ```
-Android  ── HTTPS ──>  api.example.com  ──>  Nginx (EC2 t3.micro)  ──>  Spring Boot :8080
-                                                                              │
-                                                                              ▼
-                                                                       RDS Postgres (db.t3.micro, private)
+Android  ── HTTP ──>  http://<elastic-ip>  ──>  Nginx :80  ──>  Spring Boot :8080  ──>  Postgres :5432 (localhost)
 ```
+
+When you eventually buy a domain, follow the **[Adding a domain + HTTPS](#adding-a-domain--https-later)** section at the bottom — no other changes needed.
 
 ---
 
 ## 0. Prereqs
 
 - AWS account, signed-in to the **ap-south-1 (Mumbai)** region in the console.
-- A domain you control (or buy one first — Namecheap / Route 53 / Cloudflare Registrar).
 - `ssh` and `git` installed locally.
+- `finTrackAPI` pushed to GitHub (public, or with a deploy key / PAT if private).
 
 ---
 
-## 1. RDS Postgres (db.t3.micro, free tier)
-
-**Console → RDS → Create database:**
-
-| Setting | Value |
-|---|---|
-| Engine | PostgreSQL (16.x) |
-| Templates | Free tier |
-| DB instance identifier | `fintrack-db` |
-| Master username | `fintrack_admin` |
-| Master password | *(save in your password manager)* |
-| Instance class | `db.t3.micro` |
-| Storage | 20 GB gp3, **disable** autoscaling for staging |
-| Multi-AZ | No |
-| VPC | default VPC |
-| Public access | **No** (only EC2 reaches it) |
-| VPC security group | create new: `fintrack-db-sg` |
-| Initial database name | `fintrack` |
-| Backup retention | 1 day |
-
-After creation, note the **Endpoint** — looks like `fintrack-db.xxxxxx.ap-south-1.rds.amazonaws.com`.
-
-### Create an app-level DB user (don't use the master)
-
-Connect from your laptop temporarily (set RDS to "Publicly accessible: Yes" briefly, or do it from the EC2 after step 2):
-
-```sql
-CREATE USER fintrack_app WITH PASSWORD 'GENERATE_A_STRONG_PASSWORD';
-GRANT ALL PRIVILEGES ON DATABASE fintrack TO fintrack_app;
-\c fintrack
-GRANT ALL ON SCHEMA public TO fintrack_app;
-```
-
-Then flip "Publicly accessible" back to No.
-
----
-
-## 2. EC2 (t3.micro Ubuntu 24.04, free tier)
+## 1. Launch EC2 (t3.micro Ubuntu 24.04, free tier)
 
 **Console → EC2 → Launch instance:**
 
@@ -76,28 +38,17 @@ Then flip "Publicly accessible" back to No.
 | Type | Port | Source | Why |
 |---|---|---|---|
 | SSH | 22 | My IP | SSH access |
-| HTTP | 80 | 0.0.0.0/0, ::/0 | certbot HTTP-01 challenge + redirect |
-| HTTPS | 443 | 0.0.0.0/0, ::/0 | API traffic |
+| HTTP | 80 | 0.0.0.0/0, ::/0 | API traffic (and certbot HTTP-01 later) |
 
-### Allow EC2 → RDS
-
-Edit `fintrack-db-sg` inbound:
-
-| Type | Port | Source |
-|---|---|---|
-| PostgreSQL | 5432 | `fintrack-api-sg` (security group, not IP) |
+Postgres stays on `127.0.0.1` — no inbound rule needed.
 
 ### Elastic IP
 
-**EC2 → Elastic IPs → Allocate → Associate with `fintrack-api`.** This is the IP you'll point DNS at — it doesn't change across reboots.
+**EC2 → Elastic IPs → Allocate → Associate with `fintrack-api`.** Free while attached, and survives reboots.
 
 ---
 
-## 3. Bootstrap the server
-
-Push `finTrackAPI` to GitHub first (if private, generate a deploy key or use HTTPS + a PAT).
-
-SSH in:
+## 2. Bootstrap the server
 
 ```bash
 chmod 400 fintrack-api-key.pem
@@ -112,27 +63,40 @@ curl -fsSL https://raw.githubusercontent.com/<your-user>/finTrackAPI/main/deploy
 sudo REPO_URL=https://github.com/<your-user>/finTrackAPI.git bash bootstrap.sh
 ```
 
-This installs Java 17, Nginx, certbot, clones the repo to `/opt/fintrack-api`, builds the jar, and installs the systemd unit (stopped).
+This:
+- Installs OpenJDK 17, Postgres, Nginx, git
+- Creates a `fintrack` Linux service user
+- Clones the repo to `/opt/fintrack-api` and builds the jar
+- Creates Postgres database `fintrack` + user `fintrack_app` with a random password
+- Writes `/etc/fintrack-api.env` with that password and a fresh JWT secret already filled in
+- Installs the `fintrack-api` systemd unit (stopped, awaiting mail creds)
 
 ---
 
-## 4. Configure env vars
+## 3. Add mail credentials
+
+Only one thing left in the env file — SMTP:
 
 ```bash
 sudo nano /etc/fintrack-api.env
 ```
 
-Fill in `DATABASE_URL`, `PGUSER`, `PGPASSWORD`, `JWT_SECRET`, mail creds. Generate JWT secret:
-
-```bash
-openssl rand -base64 64 | tr -d '\n'
+Set:
+```
+MAIL_USERNAME=you@gmail.com
+MAIL_PASSWORD=<gmail-app-password>
+MAIL_FROM=you@gmail.com
 ```
 
-Start the service:
+> For Gmail, generate an App Password at <https://myaccount.google.com/apppasswords> — your normal password won't work with SMTP.
+
+---
+
+## 4. Start the service
 
 ```bash
 sudo systemctl start fintrack-api
-sudo journalctl -u fintrack-api -f   # watch logs; Ctrl-C when you see "Started"
+sudo journalctl -u fintrack-api -f   # Ctrl-C once you see "Started Finance Manager"
 ```
 
 Sanity check from the EC2 itself:
@@ -141,46 +105,41 @@ Sanity check from the EC2 itself:
 curl -i http://127.0.0.1:8080/actuator/health
 ```
 
+You should see `{"status":"UP"}`.
+
+> **Schema note:** the env file sets `SPRING_JPA_HIBERNATE_DDL_AUTO=update` and `SPRING_FLYWAY_ENABLED=false`. JPA will auto-create tables on first start. Fine for staging — for real production, generate a Flyway baseline and drop those two overrides.
+
 ---
 
-## 5. Nginx + DNS + HTTPS
+## 5. Put Nginx in front
 
 ```bash
 sudo cp /opt/fintrack-api/deploy/nginx.conf /etc/nginx/sites-available/fintrack-api
-# Edit the server_name line to your real domain:
-sudo sed -i 's/api.example.com/api.yourdomain.com/g' /etc/nginx/sites-available/fintrack-api
 sudo ln -sf /etc/nginx/sites-available/fintrack-api /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-**Point DNS** at the Elastic IP — at your registrar:
-
-| Type | Name | Value | TTL |
-|---|---|---|---|
-| A | `api` (or whatever subdomain) | `<elastic-ip>` | 300 |
-
-Wait for propagation (`dig api.yourdomain.com` should return the EIP). Then issue the cert:
+From your laptop:
 
 ```bash
-sudo certbot --nginx -d api.yourdomain.com --agree-tos -m you@yourdomain.com --redirect
+curl http://<elastic-ip>/actuator/health
+curl http://<elastic-ip>/healthz
 ```
 
-certbot rewrites `/etc/nginx/sites-available/fintrack-api` to add the TLS server block + auto-renew timer.
+The API is now reachable at `http://<elastic-ip>`.
 
 ---
 
-## 6. Update the Flutter app
+## 6. Point the Flutter app at it
 
-In `lib/services/api_client.dart`:
+In `lib/services/api_client.dart`, set the base URL to `http://<elastic-ip>` (or a `_productionBaseUrl` constant) for builds you want hitting staging.
 
-```dart
-static const String _productionBaseUrl = 'https://api.yourdomain.com';
-```
+**Android cleartext gotcha:** Android 9+ blocks cleartext HTTP by default. Until you add HTTPS, you'll need either:
+- `android:usesCleartextTraffic="true"` on `<application>` in `android/app/src/main/AndroidManifest.xml`, **or**
+- a `network_security_config.xml` that whitelists your EC2 IP.
 
-(See the Flutter repo's `api_client.dart` line 18.)
-
-For Android **debug builds** to also hit staging instead of LAN IP, temporarily change the `defaultTargetPlatform == TargetPlatform.android` branch to return the same URL.
+iOS is similar via `NSAppTransportSecurity` in `Info.plist`. Both are temporary — remove once you're on HTTPS.
 
 ---
 
@@ -193,7 +152,39 @@ sudo systemctl restart fintrack-api
 sudo journalctl -u fintrack-api -f
 ```
 
-You can wrap that into a `deploy/update.sh` if you redeploy often.
+Wrap into `deploy/update.sh` if you redeploy often.
+
+---
+
+## Adding a domain + HTTPS later
+
+When you have a domain:
+
+1. **DNS:** add an `A` record `api.yourdomain.com → <elastic-ip>` (TTL 300). Wait for `dig api.yourdomain.com` to return the EIP.
+
+2. **Edit nginx.conf** — change `server_name _;` to `server_name api.yourdomain.com;`, reload nginx.
+
+3. **Open 443** in `fintrack-api-sg` (HTTPS, 0.0.0.0/0).
+
+4. **Install certbot and issue the cert:**
+   ```bash
+   sudo apt-get install -y certbot python3-certbot-nginx
+   sudo certbot --nginx -d api.yourdomain.com --agree-tos -m you@yourdomain.com --redirect
+   ```
+
+5. **Update Flutter app** to `https://api.yourdomain.com`. Drop the cleartext-traffic workarounds.
+
+---
+
+## Backups (Postgres, on-box)
+
+The DB lives on the same EBS volume as everything else. EBS snapshots cover the whole box, but a logical `pg_dump` is nice to have. Cron a daily dump:
+
+```bash
+sudo crontab -e
+# Add:
+0 2 * * * sudo -u postgres pg_dump fintrack | gzip > /var/backups/fintrack-$(date +\%F).sql.gz && find /var/backups -name 'fintrack-*.sql.gz' -mtime +7 -delete
+```
 
 ---
 
@@ -203,10 +194,8 @@ You can wrap that into a `deploy/update.sh` if you redeploy often.
 |---|---|
 | EC2 t3.micro on-demand (ap-south-1) | ~$8 |
 | EBS 30GB gp3 | ~$3 |
-| RDS db.t3.micro | ~$13 |
-| RDS storage 20GB | ~$2 |
 | Elastic IP (while associated) | $0 |
 | Data transfer (light staging) | ~$1 |
-| **Total** | **~$27/mo** |
+| **Total** | **~$12/mo** |
 
-Cheaper if you go down to db.t4g.nano on RDS or move to Lightsail when free tier runs out.
+Roughly half the RDS-backed version because Postgres is co-located. Trade-off: no automated backups, no Multi-AZ, manual upgrades.
