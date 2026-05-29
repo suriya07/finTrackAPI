@@ -57,6 +57,7 @@ public class SecurityConfig {
                                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers("/error").permitAll()
+                                                .requestMatchers("/actuator/health").permitAll()
                                                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**")
                                                 .permitAll()
                                                 .requestMatchers("/auth/login", "/auth/signup",
