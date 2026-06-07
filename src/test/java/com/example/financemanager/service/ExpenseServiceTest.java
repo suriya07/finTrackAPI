@@ -36,6 +36,7 @@ class ExpenseServiceTest {
     @Mock private CategoryRepository categoryRepository;
     @Mock private AccountRepository accountRepository;
     @Mock private UserRepository userRepository;
+    @Mock private ReceiptStorageService receiptStorage;
 
     private ExpenseService service;
 
@@ -45,7 +46,7 @@ class ExpenseServiceTest {
     @BeforeEach
     void setUp() {
         service = new ExpenseService(expenseRepository, categoryRepository, accountRepository,
-                userRepository, new AccountBalanceService());
+                userRepository, new AccountBalanceService(), receiptStorage);
         lenient().when(expenseRepository.save(any(ExpenseEntity.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
     }

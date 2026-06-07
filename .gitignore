@@ -7,3 +7,5 @@ mvnw.cmd
 application-local.properties
 src/main/resources/application-local.properties
 .env
+# Uploaded receipt images (local storage)
+uploads/

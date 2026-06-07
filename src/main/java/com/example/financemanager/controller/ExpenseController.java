@@ -7,8 +7,12 @@ import com.example.financemanager.service.CustomUserDetails;
 import com.example.financemanager.service.ExpenseService;
 import org.springframework.data.domain.Page;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -84,5 +88,33 @@ public class ExpenseController {
             @PathVariable UUID id,
             @AuthenticationPrincipal CustomUserDetails user) {
         expenseService.delete(user.getUserId(), id);
+    }
+
+    /** Attaches (or replaces) the receipt image for an expense. */
+    @PostMapping(value = "/{id}/receipt", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ExpenseEntity uploadReceipt(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal CustomUserDetails user,
+            @RequestParam("file") MultipartFile file) {
+        return expenseService.attachReceipt(user.getUserId(), id, file);
+    }
+
+    /** Streams the receipt image back to the (authenticated, owning) client. */
+    @GetMapping("/{id}/receipt")
+    public ResponseEntity<org.springframework.core.io.Resource> getReceipt(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        ExpenseService.ReceiptDownload download = expenseService.getReceipt(user.getUserId(), id);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(download.contentType()))
+                .header(HttpHeaders.CACHE_CONTROL, "private, max-age=86400")
+                .body(download.resource());
+    }
+
+    @DeleteMapping("/{id}/receipt")
+    public ExpenseEntity deleteReceipt(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal CustomUserDetails user) {
+        return expenseService.removeReceipt(user.getUserId(), id);
     }
 }

@@ -8,12 +8,14 @@ import com.example.financemanager.repositories.AccountRepository;
 import com.example.financemanager.repositories.CategoryRepository;
 import com.example.financemanager.repositories.ExpenseRepository;
 import com.example.financemanager.repositories.UserRepository;
+import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -37,17 +39,24 @@ public class ExpenseService {
     private final AccountRepository accountRepository;
     private final UserRepository userRepository;
     private final AccountBalanceService balanceService;
+    private final ReceiptStorageService receiptStorage;
 
     public ExpenseService(ExpenseRepository expenseRepository,
             CategoryRepository categoryRepository,
             AccountRepository accountRepository,
             UserRepository userRepository,
-            AccountBalanceService balanceService) {
+            AccountBalanceService balanceService,
+            ReceiptStorageService receiptStorage) {
         this.expenseRepository = expenseRepository;
         this.categoryRepository = categoryRepository;
         this.accountRepository = accountRepository;
         this.userRepository = userRepository;
         this.balanceService = balanceService;
+        this.receiptStorage = receiptStorage;
+    }
+
+    /** Resource + content type for streaming a stored receipt back to the client. */
+    public record ReceiptDownload(Resource resource, String contentType) {
     }
 
     @Transactional(readOnly = true)
@@ -147,7 +156,51 @@ public class ExpenseService {
             balanceService.reverseExpense(account, expense.getAmount());
             accountRepository.save(account);
         }
+        if (expense.getReceiptPath() != null) {
+            receiptStorage.delete(expense.getReceiptPath());
+        }
         expenseRepository.delete(expense);
+    }
+
+    @Transactional
+    public ExpenseEntity attachReceipt(UUID userId, UUID id, MultipartFile file) {
+        ExpenseEntity expense = requireOwnedExpense(userId, id);
+        String filename = receiptStorage.store(file, expense.getId());
+        expense.setReceiptPath(filename);
+        return expenseRepository.save(expense);
+    }
+
+    @Transactional(readOnly = true)
+    public ReceiptDownload getReceipt(UUID userId, UUID id) {
+        ExpenseEntity expense = requireOwnedExpense(userId, id);
+        String filename = expense.getReceiptPath();
+        if (filename == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No receipt attached");
+        }
+        return new ReceiptDownload(
+                receiptStorage.loadAsResource(filename),
+                receiptStorage.contentTypeFor(filename));
+    }
+
+    @Transactional
+    public ExpenseEntity removeReceipt(UUID userId, UUID id) {
+        ExpenseEntity expense = requireOwnedExpense(userId, id);
+        if (expense.getReceiptPath() != null) {
+            receiptStorage.delete(expense.getReceiptPath());
+            expense.setReceiptPath(null);
+            expenseRepository.save(expense);
+        }
+        return expense;
+    }
+
+    /** Loads an expense and verifies it belongs to {@code userId}. */
+    private ExpenseEntity requireOwnedExpense(UUID userId, UUID id) {
+        ExpenseEntity expense = expenseRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expense not found"));
+        if (!expense.getUser().getId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Unauthorized");
+        }
+        return expense;
     }
 
     private Collection<UUID> resolveCategoryIds(UUID categoryId) {

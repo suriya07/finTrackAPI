@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.HashMap;
@@ -22,6 +23,16 @@ public class GlobalExceptionHandler {
         response.put("error", ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString());
         response.put("message", ex.getReason() != null ? ex.getReason() : ex.getStatusCode().toString());
         return new ResponseEntity<>(response, ex.getStatusCode());
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, String>> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException ex) {
+        // Spring's multipart resolver rejects over-limit uploads before they reach the
+        // controller, so map that to a clean 413 instead of a generic 500.
+        Map<String, String> response = new HashMap<>();
+        response.put("error", "File too large");
+        response.put("message", "Receipt exceeds the 10 MB limit");
+        return new ResponseEntity<>(response, HttpStatus.PAYLOAD_TOO_LARGE);
     }
 
     @ExceptionHandler(Exception.class)

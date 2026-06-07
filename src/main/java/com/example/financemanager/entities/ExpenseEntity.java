@@ -30,6 +30,11 @@ public class ExpenseEntity extends BaseAuditableEntity {
     private BigDecimal amount;
     private LocalDate expenseDate;
 
+    /** Server-side relative filename of the attached receipt image, if any. */
+    @Column(name = "receipt_path")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String receiptPath;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "debt_id")
     @com.fasterxml.jackson.annotation.JsonIgnore
@@ -134,5 +139,23 @@ public class ExpenseEntity extends BaseAuditableEntity {
 
     public void setSaving(SavingEntity saving) {
         this.saving = saving;
+    }
+
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    public String getReceiptPath() {
+        return receiptPath;
+    }
+
+    public void setReceiptPath(String receiptPath) {
+        this.receiptPath = receiptPath;
+    }
+
+    /**
+     * API-relative URL the client uses to fetch the receipt image (auth-protected),
+     * or null when no receipt is attached. Derived — not persisted.
+     */
+    @Transient
+    public String getReceiptUrl() {
+        return receiptPath != null ? "/expenses/" + id + "/receipt" : null;
     }
 }
