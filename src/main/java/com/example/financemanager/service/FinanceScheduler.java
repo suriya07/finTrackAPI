@@ -75,32 +75,41 @@ public class FinanceScheduler {
         LocalDate horizon = today.plusDays(lookAheadDays);
 
         // Preserve insertion order per user so the digest reads naturally.
-        Map<UserEntity, List<String>> linesByUser = new LinkedHashMap<>();
+        Map<UserEntity, List<EmailService.ReminderItem>> itemsByUser = new LinkedHashMap<>();
 
         for (DebtEntity debt : debtRepository.findByDueDateBetween(today, horizon)) {
-            linesByUser.computeIfAbsent(debt.getUser(), u -> new ArrayList<>())
-                    .add(String.format("• Debt \"%s\" of %s is due on %s",
-                            debt.getName(), debt.getAmount(), debt.getDueDate().format(DATE_FMT)));
+            itemsByUser.computeIfAbsent(debt.getUser(), u -> new ArrayList<>())
+                    .add(new EmailService.ReminderItem(
+                            debt.getName(), "Debt repayment", formatAmount(debt.getAmount()),
+                            debt.getDueDate().format(DATE_FMT), false));
         }
 
         for (RecurringTransactionEntity r : recurringRepository.findUpcoming(today, horizon)) {
-            linesByUser.computeIfAbsent(r.getUser(), u -> new ArrayList<>())
-                    .add(String.format("• %s \"%s\" of %s is due on %s",
-                            capitalize(r.getType().name()), r.getName(), r.getAmount(),
-                            r.getNextDueDate().format(DATE_FMT)));
+            boolean isIncome =
+                    r.getType() == RecurringTransactionEntity.RecurringType.income;
+            // Surface the category (what the materialised expense/income is filed under),
+            // falling back to the type label when no category is set.
+            String detail = r.getCategory() != null
+                    ? r.getCategory().getName()
+                    : capitalize(r.getType().name());
+            itemsByUser.computeIfAbsent(r.getUser(), u -> new ArrayList<>())
+                    .add(new EmailService.ReminderItem(
+                            r.getName(), detail, formatAmount(r.getAmount()),
+                            r.getNextDueDate().format(DATE_FMT), isIncome));
         }
 
-        for (Map.Entry<UserEntity, List<String>> entry : linesByUser.entrySet()) {
-            UserEntity user = entry.getKey();
-            String body = "Here's what's coming up in the next " + lookAheadDays + " day(s):\n\n"
-                    + String.join("\n", entry.getValue())
-                    + "\n\n— FinTrack";
-            emailService.sendNotificationEmail(user.getEmail(), "FinTrack - Upcoming payments", body);
+        for (Map.Entry<UserEntity, List<EmailService.ReminderItem>> entry : itemsByUser.entrySet()) {
+            emailService.sendReminderDigest(
+                    entry.getKey().getEmail(), lookAheadDays, entry.getValue());
         }
 
-        if (!linesByUser.isEmpty()) {
-            log.info("Reminder scheduler notified {} user(s)", linesByUser.size());
+        if (!itemsByUser.isEmpty()) {
+            log.info("Reminder scheduler notified {} user(s)", itemsByUser.size());
         }
+    }
+
+    private String formatAmount(java.math.BigDecimal amount) {
+        return amount == null ? "" : String.format("₹%,.2f", amount);
     }
 
     private String capitalize(String s) {
