@@ -4,9 +4,11 @@ import com.example.financemanager.dto.ExpenseDTO;
 import com.example.financemanager.entities.AccountEntity;
 import com.example.financemanager.entities.CategoryEntity;
 import com.example.financemanager.entities.ExpenseEntity;
+import com.example.financemanager.entities.GroupEntity;
 import com.example.financemanager.repositories.AccountRepository;
 import com.example.financemanager.repositories.CategoryRepository;
 import com.example.financemanager.repositories.ExpenseRepository;
+import com.example.financemanager.repositories.GroupRepository;
 import com.example.financemanager.repositories.UserRepository;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
@@ -37,6 +39,7 @@ public class ExpenseService {
     private final ExpenseRepository expenseRepository;
     private final CategoryRepository categoryRepository;
     private final AccountRepository accountRepository;
+    private final GroupRepository groupRepository;
     private final UserRepository userRepository;
     private final AccountBalanceService balanceService;
     private final ReceiptStorageService receiptStorage;
@@ -44,12 +47,14 @@ public class ExpenseService {
     public ExpenseService(ExpenseRepository expenseRepository,
             CategoryRepository categoryRepository,
             AccountRepository accountRepository,
+            GroupRepository groupRepository,
             UserRepository userRepository,
             AccountBalanceService balanceService,
             ReceiptStorageService receiptStorage) {
         this.expenseRepository = expenseRepository;
         this.categoryRepository = categoryRepository;
         this.accountRepository = accountRepository;
+        this.groupRepository = groupRepository;
         this.userRepository = userRepository;
         this.balanceService = balanceService;
         this.receiptStorage = receiptStorage;
@@ -238,6 +243,18 @@ public class ExpenseService {
             expense.setAccount(account);
         } else if (expense.getAccount() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Account is mandatory for expenses");
+        }
+
+        // Group is optional: a null groupId clears any existing assignment.
+        if (dto.getGroupId() != null) {
+            GroupEntity group = groupRepository.findById(dto.getGroupId())
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Group not found"));
+            if (!group.getUser().getId().equals(userId)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid group");
+            }
+            expense.setGroup(group);
+        } else {
+            expense.setGroup(null);
         }
     }
 

@@ -87,4 +87,9 @@ public interface ExpenseRepository
         List<ExpenseEntity> findByAccount_IdAndExpenseDateGreaterThanEqual(UUID accountId, LocalDate date);
 
         boolean existsByCategory_Id(UUID categoryId);
+
+        /** Un-assigns every expense from the given group (used when a group is deleted). */
+        @org.springframework.data.jpa.repository.Modifying
+        @Query("update ExpenseEntity e set e.group = null where e.group.id = :groupId")
+        void clearGroupAssignments(@Param("groupId") UUID groupId);
 }

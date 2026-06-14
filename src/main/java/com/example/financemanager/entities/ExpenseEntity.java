@@ -50,7 +50,26 @@ public class ExpenseEntity extends BaseAuditableEntity {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private AccountEntity account;
 
+    /** Optional expense group (trip/event). Null when not grouped. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private GroupEntity group;
+
     public ExpenseEntity() {
+    }
+
+    public GroupEntity getGroup() {
+        return group;
+    }
+
+    public void setGroup(GroupEntity group) {
+        this.group = group;
+    }
+
+    /** Exposed in JSON as {@code groupId} for the client. */
+    public UUID getGroupId() {
+        return group != null ? group.getId() : null;
     }
 
     public AccountEntity getAccount() {

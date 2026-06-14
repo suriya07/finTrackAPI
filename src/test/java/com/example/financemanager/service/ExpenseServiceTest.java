@@ -7,6 +7,7 @@ import com.example.financemanager.entities.UserEntity;
 import com.example.financemanager.repositories.AccountRepository;
 import com.example.financemanager.repositories.CategoryRepository;
 import com.example.financemanager.repositories.ExpenseRepository;
+import com.example.financemanager.repositories.GroupRepository;
 import com.example.financemanager.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,6 +36,7 @@ class ExpenseServiceTest {
     @Mock private ExpenseRepository expenseRepository;
     @Mock private CategoryRepository categoryRepository;
     @Mock private AccountRepository accountRepository;
+    @Mock private GroupRepository groupRepository;
     @Mock private UserRepository userRepository;
     @Mock private ReceiptStorageService receiptStorage;
 
@@ -46,7 +48,7 @@ class ExpenseServiceTest {
     @BeforeEach
     void setUp() {
         service = new ExpenseService(expenseRepository, categoryRepository, accountRepository,
-                userRepository, new AccountBalanceService(), receiptStorage);
+                groupRepository, userRepository, new AccountBalanceService(), receiptStorage);
         lenient().when(expenseRepository.save(any(ExpenseEntity.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
     }

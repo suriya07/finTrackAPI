@@ -11,6 +11,7 @@ public class ExpenseDTO {
     private LocalDate date;
     private UUID categoryId;
     private UUID accountId;
+    private UUID groupId;
 
     public String getName() {
         return name;
@@ -58,5 +59,13 @@ public class ExpenseDTO {
 
     public void setAccountId(UUID accountId) {
         this.accountId = accountId;
+    }
+
+    public UUID getGroupId() {
+        return groupId;
+    }
+
+    public void setGroupId(UUID groupId) {
+        this.groupId = groupId;
     }
 }
